@@ -28,7 +28,8 @@ estimator = PyTorch(
         "batch-size": 128,
         "epochs": 1,
         "learning-rate": 1e-3,
-        "log-interval": 100},
+        "log-interval": 10},
+    environment={"WANDB_API_KEY": os.getenv("wandb_api_key")}
 )
 
 
@@ -57,7 +58,6 @@ download_mnist_from_public_s3("./data", True)
 download_mnist_from_public_s3("./data", False)
 
 
-
 # Upload to the default bucket
 
 prefix = "DEMO-mnist"
@@ -70,6 +70,9 @@ estimator.fit(inputs=channels)
 
 pt_mnist_model_data = estimator.model_data
 print("Model artifact saved at:\n", pt_mnist_model_data)
+
+
+# Download the trained model
 
 if not os.path.exists("models"):
     os.makedirs("models")

@@ -1,9 +1,14 @@
+import os
+import subprocess
+subprocess.call(["pip", "install", "wandb==0.15.11"])
+subprocess.call(["wandb", "login", os.environ["WANDB_API_KEY"]])
+
 import argparse
 import gzip
 import json
 import logging
-import os
 import sys
+import wandb
 
 import numpy as np
 import torch
@@ -13,6 +18,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
 from model import Net
+
+#wandb.ensure_configured()
+#wandb.login(os.environ["WANDB_API_KEY"])
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -93,6 +101,16 @@ def train(args):
         net.parameters(), betas=(args.beta_1, args.beta_2), weight_decay=args.weight_decay
     )
 
+    wandb.init(
+        project="MNIST",
+        config={
+            "learning_rate": args.learning_rate,
+            "architecture": "ConvNet",
+            "dataset": "MNIST",
+            "epochs": args.epochs,
+            }
+    )
+
     logger.info("Start training ...")
     for epoch in range(1, args.epochs + 1):
         net.train()
@@ -106,6 +124,7 @@ def train(args):
             optimizer.step()
 
             if batch_idx % args.log_interval == 0:
+                wandb.log({"loss": loss.item(), "epoch": epoch})
                 print(
                     "Train Epoch: {} [{}/{} ({:.0f}%)] Loss: {:.6f}".format(
                         epoch,
@@ -121,6 +140,7 @@ def train(args):
 
     # save model checkpoint
     save_model(net, args.model_dir)
+    wandb.finish()
     return
 
 
