@@ -72,6 +72,7 @@ for i in range(16):
     axes[0].imshow(image)
     axes[1].bar([i for i in range(10)], prediction)
     axes[1].set_xticks([i for i in range(10)])
+    fig.savefig(f"{i}.png")
     fig.show()
     print(f"Label : {target}, Prediction : {prediction.argmax()}")
 

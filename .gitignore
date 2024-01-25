@@ -10,3 +10,4 @@ venv/*
 # AI data
 data/*
 models/*
+outputs/*
