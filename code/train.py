@@ -19,9 +19,6 @@ from torch.utils.data import DataLoader, Dataset
 
 from model import Net
 
-#wandb.ensure_configured()
-#wandb.login(os.environ["WANDB_API_KEY"])
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -62,15 +59,7 @@ def convert_to_tensor(data_dir, images_file, labels_file):
 
 
 class MNIST(Dataset):
-    def __init__(self, data_dir, train=True):
-
-        if train:
-            images_file = "train-images-idx3-ubyte.gz"
-            labels_file = "train-labels-idx1-ubyte.gz"
-        else:
-            images_file = "t10k-images-idx3-ubyte.gz"
-            labels_file = "t10k-labels-idx1-ubyte.gz"
-
+    def __init__(self, data_dir, images_file="images.gz", labels_file="labels.gz"):
         self.images, self.labels = convert_to_tensor(data_dir, images_file, labels_file)
 
     def __len__(self):
@@ -88,12 +77,8 @@ def train(args):
     if use_cuda:
         torch.cuda.manual_seed(args.seed)
 
-    train_loader = DataLoader(
-        MNIST(args.train, train=True), batch_size=args.batch_size, shuffle=True
-    )
-    test_loader = DataLoader(
-        MNIST(args.test, train=False), batch_size=args.test_batch_size, shuffle=False
-    )
+    train_loader = DataLoader(MNIST(args.train), batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(MNIST(args.test), batch_size=args.test_batch_size, shuffle=False)
 
     net = Net().to(device)
     loss_fn = nn.CrossEntropyLoss()
@@ -124,16 +109,7 @@ def train(args):
             optimizer.step()
 
             if batch_idx % args.log_interval == 0:
-                wandb.log({"loss": loss.item(), "epoch": epoch})
-                print(
-                    "Train Epoch: {} [{}/{} ({:.0f}%)] Loss: {:.6f}".format(
-                        epoch,
-                        batch_idx * len(imgs),
-                        len(train_loader.sampler),
-                        100.0 * batch_idx / len(train_loader),
-                        loss.item(),
-                    )
-                )
+                log(loss, epoch, batch_idx, imgs, train_loader)
 
         # test the model
         test(net, test_loader, device)
@@ -142,6 +118,19 @@ def train(args):
     save_model(net, args.model_dir)
     wandb.finish()
     return
+
+
+def log(loss, epoch, batch_idx, imgs, train_loader):
+    wandb.log({"loss": loss.item(), "epoch": epoch})
+    print(
+        "Train Epoch: {} [{}/{} ({:.0f}%)] Loss: {:.6f}".format(
+            epoch,
+            batch_idx * len(imgs),
+            len(train_loader.sampler),
+            100.0 * batch_idx / len(train_loader),
+            loss.item(),
+        )
+    )
 
 
 def test(model, test_loader, device):
@@ -158,6 +147,7 @@ def test(model, test_loader, device):
             correct += pred.eq(labels.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
+    wandb.log({"test": test_loss})
     logger.info(
         "Test set: Average loss: {:.4f}, Accuracy: {}/{}, {})\n".format(
             test_loss, correct, len(test_loader.dataset), 100.0 * correct / len(test_loader.dataset)
